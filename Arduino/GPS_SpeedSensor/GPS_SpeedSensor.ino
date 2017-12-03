@@ -1,6 +1,6 @@
 /*
   -----------------------------------------------------------
-            MHSFA Speed GPS Sensor v 1.0
+            MHSFA Speed GPS Sensor v 1.1
   -----------------------------------------------------------
 
    Based on the "Jeti GPS Sensor v 1.4" - Tero Salminen RC-Thoughts.com (c) 2017 www.rc-thoughts.com
@@ -16,6 +16,8 @@
   -----------------------------------------------------------
       Shared under MIT-license by Alastair Cormack (c) 2017
   -----------------------------------------------------------
+  Ver 1.0 - Initial Release
+  Ver 1.1 - Changed Altitude to be relative to start position and added a 3 second wait after 1st fix
 */
 
 #include <JetiExSerial.h>
@@ -31,6 +33,9 @@ unsigned long distToHome = 0;
 float home_lat;
 float home_lon;
 boolean homeSet = false;
+boolean timerStarted = false;
+unsigned long timeOfFix;
+
 
 uint8_t LastSentenceInInterval = 0xFF; // storage for the run-time selection
 
@@ -183,8 +188,16 @@ void loop()
       fix_data = nmgps.read();
       if (!fix) {
         if (fix_data.valid.location){
-          fix = true;
-          altirel = fix_data.altitude();
+          if (timerStarted == false) {
+            timerStarted = true;
+            timeOfFix = millis();
+          }
+          else {
+            if ((millis() - timeOfFix) > 3000) { //allow for a few seconds for fixes to settle
+              fix = true;
+              altirel = fix_data.altitude();
+            }
+          }
         } else {
           fix = false;
         }
@@ -209,8 +222,7 @@ void loop()
         
         jetiEx.SetSensorValueGPS( ID_GPSLAT, false, glat );
         jetiEx.SetSensorValueGPS( ID_GPSLON, true, glng );
-        jetiEx.SetSensorValue( ID_ALTM, fix_data.altitude() );
-        //jetiEx.SetSensorValue( ID_ALTMEREL, fix_data.altitude() - altirel );
+        jetiEx.SetSensorValue( ID_ALTM, (fix_data.altitude() - altirel));
         jetiEx.SetSensorValue( ID_DIST, distToHome);
         jetiEx.SetSensorValue( ID_GPSSPEEDKM, fix_data.speed_kph() );
 
@@ -224,7 +236,6 @@ void loop()
         jetiEx.SetSensorValueGPS( ID_GPSLON, true, glng );
         jetiEx.SetSensorValue( ID_ALTM, 0 );
         jetiEx.SetSensorValue( ID_DIST, 0);
-        //jetiEx.SetSensorValue( ID_ALTMEREL, 0 );
         jetiEx.SetSensorValue( ID_GPSSPEEDKM, 0 );
       }
   }

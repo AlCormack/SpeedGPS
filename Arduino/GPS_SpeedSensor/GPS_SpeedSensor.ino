@@ -18,6 +18,7 @@
   -----------------------------------------------------------
   Ver 1.0 - Initial Release
   Ver 1.1 - Changed Altitude to be relative to start position and added a 3 second wait after 1st fix
+  Ver 1.2 - Changed to 5hz as ports were overloaded at 10hz
 */
 
 #include <JetiExSerial.h>
@@ -171,7 +172,7 @@ void setup()
   delay( COMMAND_DELAY );
   sendUBX( ubxSetdm7, sizeof(ubxSetdm7) );
   delay( COMMAND_DELAY ); 
-  sendUBX( ubxRate10Hz, sizeof(ubxRate10Hz) );
+  sendUBX( ubxRate5Hz, sizeof(ubxRate5Hz) );
   delay( COMMAND_DELAY ); 
   LastSentenceInInterval = NMEAGPS::NMEA_GGA;
   
@@ -239,43 +240,14 @@ void loop()
         jetiEx.SetSensorValue( ID_GPSSPEEDKM, 0 );
       }
   }
-  HandleMenu();
+
+  //just to deal with the possibility of not reading the GPS buffer fast enough
+  if (nmgps.overrun()) {
+    nmgps.overrun( false );
+  }
+
   jetiEx.DoJetiSend();
   
 }
 
-void HandleMenu()
-{
-  static int  _nMenu = 0;
-  static bool _bSetDisplay = true;
-  uint8_t c = jetiEx.GetJetiboxKey();
 
-  // 224 0xe0 : // RIGHT
-  // 112 0x70 : // LEFT
-  // 208 0xd0 : // UP
-  // 176 0xb0 : // DOWN
-  // 144 0x90 : // UP+DOWN
-  //  96 0x60 : // LEFT+RIGHT
-
-  // DN
-  if ( c == 0xb0 )
-  {
-    if ( _nMenu == 1 ) {
-      _nMenu = 0;
-      _bSetDisplay = true;
-      resetFunc();
-    }
-  }
-
-  if ( !_bSetDisplay )
-    return;
-
-  switch ( _nMenu )
-  {
-    case 0:
-      jetiEx.SetJetiboxText( JetiExProtocol::LINE1, "   MHSFA Speed" );
-      jetiEx.SetJetiboxText( JetiExProtocol::LINE2, "   GPS Sensor" );
-      _bSetDisplay = false;
-      break;
-  }
-}

@@ -19,6 +19,7 @@
   Ver 1.0 - Initial Release
   Ver 1.1 - Changed Altitude to be relative to start position and added a 3 second wait after 1st fix
   Ver 1.2 - Changed to 5hz as ports were overloaded at 10hz
+  Ver 1.3 - Added in "°" (degree) as unit for lat and long
 */
 
 #include <JetiExSerial.h>
@@ -143,8 +144,8 @@ double distanceBetween(double lat1, double long1, double lat2, double long2)
 JETISENSOR_CONST sensorsSPEED[] PROGMEM =
 {
   // id             name          unit          data type           precision
-  { ID_GPSLAT,      "Latitude",   " ",          JetiSensor::TYPE_GPS, 0 },
-  { ID_GPSLON,      "Longitude",  " ",          JetiSensor::TYPE_GPS, 0 },
+  { ID_GPSLAT,      "Latitude",   "\xB0",          JetiSensor::TYPE_GPS, 0 },
+  { ID_GPSLON,      "Longitude",  "\xB0",          JetiSensor::TYPE_GPS, 0 },
   { ID_GPSSPEEDKM,  "Speed",      "km/h",       JetiSensor::TYPE_14b, 0 },
   { ID_ALTM,        "Altitude",   "m",          JetiSensor::TYPE_14b, 0 },
   { ID_DIST,        "Distance",   "m",          JetiSensor::TYPE_14b, 0 },

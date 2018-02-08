@@ -4,6 +4,7 @@ GPS Module for Jeti that has a high navigation rate of up to 10hz (based on work
 * Ver 1.0: Initial version
 * Ver 1.1: Changed Altitude to be relative to start-position and added a 3 second wait after 1st fix to allow GPS to settle. Added a pre-comiled .hex file.
 * Ver 1.2: Changed to 5hz as ports were overloaded at 10hz
+* Ver 1.3: Added "°" (degree) as unit for lat and long to support Speed Heli Pass Analyzer (https://www.helifreak.com/showthread.php?t=779897) 
 
 The GPS Module I got here:
 https://www.ebay.co.uk/itm/3-5V-UBlox-NEO-M8N-GPS-Module-For-Pixhawk-Flight-Controller-APM-2-5-W-Antenna/20208032531

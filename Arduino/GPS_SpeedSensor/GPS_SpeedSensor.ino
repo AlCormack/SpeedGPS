@@ -20,10 +20,14 @@
   Ver 1.1 - Changed Altitude to be relative to start position and added a 3 second wait after 1st fix
   Ver 1.2 - Changed to 5hz as ports were overloaded at 10hz
   Ver 1.3 - Added in "°" (degree) as unit for lat and long
+  Ver 1.4 - Added a faster way to calc distance between 2 points as we are only doing this over a few 
+            hunded metres. This will allow 9-10hz of gps of Jeti telemitry if no others sensors using the bus.
+            For the maths folks it is now using Equirectangular approximation and not the haversine formula. 
+            Code for this faster method is mine :).
 */
 
-#include <JetiExSerial.h>
-#include <JetiExProtocol.h>
+#include "JetiExSerial.h"
+#include "JetiExProtocol2.h" // The has an 80ms wait for sending rather than the stock 150. This lets this do atleast 10hz now.
 
 #include <NMEAGPS.h>
 #include <GPSport.h>
@@ -141,6 +145,13 @@ double distanceBetween(double lat1, double long1, double lat2, double long2)
   return delta * 6372795;
 }
 
+double distanceBetweenFast(double lat1, double long1, double lat2, double long2)
+{
+  double p1 = radians(long2 - long1) * cos ( 0.5*(lat2+lat1) ); //convert lat/lon to radians
+  double p2 = radians(lat2 - lat1);
+  return 6372795 * sqrt( p1*p1 + p2*p2);
+}
+
 JETISENSOR_CONST sensorsSPEED[] PROGMEM =
 {
   // id             name          unit          data type           precision
@@ -173,7 +184,8 @@ void setup()
   delay( COMMAND_DELAY );
   sendUBX( ubxSetdm7, sizeof(ubxSetdm7) );
   delay( COMMAND_DELAY ); 
-  sendUBX( ubxRate5Hz, sizeof(ubxRate5Hz) );
+  //sendUBX( ubxRate5Hz, sizeof(ubxRate5Hz) );
+  sendUBX( ubxRate10Hz, sizeof(ubxRate10Hz) );
   delay( COMMAND_DELAY ); 
   LastSentenceInInterval = NMEAGPS::NMEA_GGA;
   
@@ -215,7 +227,7 @@ void loop()
             home_lat = glat;
             home_lon = glng;
         }
-        distToHome = distanceBetween(
+        distToHome = distanceBetweenFast(
             glat,
             glng,
             home_lat,

@@ -6,6 +6,7 @@
    Based on the "Jeti GPS Sensor v 1.4" - Tero Salminen RC-Thoughts.com (c) 2017 www.rc-thoughts.com
 
    Uses Leonardo Pro Micro 16mhz 5v + I2C Logic Level Converter Bi-Directional Module 5V to 3.3V TE291 + Ublox NEO-M8N GPS-module
+   Pin 4 for Receive and 5 for Transmit in a modified AltSofSerial_Boards.h (ie 4 to GPS TX and 5 to GPS RX)
 
    Libraries needed
    - NeoGPS by SlashDevin

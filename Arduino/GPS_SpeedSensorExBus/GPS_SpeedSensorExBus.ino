@@ -263,5 +263,5 @@ if (nmgps.available( gpsPort )){
   //if (sleeptime >0) {  
   //  delay( sleeptime );
   //}
-	//exBus.DoJetiExBus();
+	exBus.DoJetiExBus();
 }

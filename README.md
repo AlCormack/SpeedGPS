@@ -6,6 +6,8 @@ GPS Module for Jeti that has a high navigation rate of up to 10hz (based on work
 * Ver 1.2: Changed to 5hz as ports were overloaded at 10hz. Possibly due to 8 mhz Arduino chip being overloaded. Testing a 16mhz one soon. 
 * Ver 1.3: Added "°" (degree) as unit for lat and long to support Speed Heli Pass Analyzer (https://www.helifreak.com/showthread.php?t=779897). Note: You will need to reload the sensors on the Jeti (In the Sensors/Logging Setup screen. Select 'Auto')
 * Ver 1.4: Added a faster way to calc distance between 2 points as we are only doing this over a few hunded metres. This will allow 9-10hz of gps of Jeti telemitry if no others sensors using the bus. For the maths folks it is now using Equirectangular approximation and not the haversine formula.
+* Ver 1.5 - Changed DoJetiSend in JetiExProtocol (changed filename to include2) from 150ms to 80ms wait
+* Ver 1.6 - Added in support for ATMega32U chip (ie Pro Micro board)
 
 The GPS Module I got here:
 https://www.ebay.co.uk/itm/3-5V-UBlox-NEO-M8N-GPS-Module-For-Pixhawk-Flight-Controller-APM-2-5-W-Antenna/20208032531
@@ -17,5 +19,7 @@ and the best place to find how to put them together and the place I based this w
 https://www.rc-thoughts.com/jeti-gps-sensor/
 
 ![alt text](https://github.com/AlCormack/SpeedGPS/blob/master/images/GPSModule.jpg "SpeedGPS on Gaui X3L")
+
+I have added an ExBus folder to this project. This is very much work in progress. On a heli with 3 EX sensors, I was not getting anything more than 5hz. So I thought I would try over ExBus. Problem appears to be that ExBus seems to make the bandwidth for the other sensors worse and I am not really seeing much improvement on the ExBus. Tom from j-log fame has a good explanation here: http://j-log.eu/s32/s32-en/telemetry-jeti-exbus/ I am going to keep playing but I'm not sure that ExBus is going to be the solver bullet here!
 
 Big thanks to Tero at rc-thoughts. I strongly encourage everyone to look at his site. 

@@ -24,13 +24,24 @@
             hunded metres. This will allow 9-10hz of gps of Jeti telemitry if no others sensors using the bus.
             For the maths folks it is now using Equirectangular approximation and not the haversine formula. 
             Code for this faster method is mine :).
+  Ver 1.5 - Changed DoJetiSend in JetiExProtocol (changed filename to include2) from 150ms to 80ms wait
+  Ver 1.6 - Added in support for ATMega32U chip (ie Pro Micro board)
 */
 
 #include "JetiExSerial.h"
 #include "JetiExProtocol2.h" // The has an 80ms wait for sending rather than the stock 150. This lets this do atleast 10hz now.
 
+#if defined(__AVR_ATmega32U4__)
+  #include <AltSoftSerial.h>
+  #define SS_TYPE AltSoftSerial
+  #define RX_PIN -1  // doesn't matter because it only works...
+  #define TX_PIN -1  //    ...on two specific pins
+  SS_TYPE gpsPort( RX_PIN, TX_PIN );
+#else
+  #include <GPSport.h>
+#endif
+
 #include <NMEAGPS.h>
-#include <GPSport.h>
 #include <Streamers.h>
 
 static NMEAGPS  nmgps;

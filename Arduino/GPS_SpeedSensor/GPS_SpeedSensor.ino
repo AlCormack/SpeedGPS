@@ -1,6 +1,6 @@
 /*
   -----------------------------------------------------------
-            MHSFA Speed GPS Sensor v 1.6
+            MHSFA Speed GPS Sensor v 1.7
   -----------------------------------------------------------
 
    Based on the "Jeti GPS Sensor v 1.4" - Tero Salminen RC-Thoughts.com (c) 2017 www.rc-thoughts.com
@@ -11,7 +11,7 @@
    - NeoGPS by SlashDevin
    - AltSoftSerial by Paul Stoffregen
    - Jeti Sensor EX Telemetry C++ Library by Bernd Wokoeck
-   - TinyGPS++ (C) 2008-2013 Mikal Hart - using the distancebetween in my code below
+   - TinyGPS++ (C) 2008-2013 Mikal Hart - using the distancebetween in code below
 
   -----------------------------------------------------------
       Shared under MIT-license by Alastair Cormack (c) 2017
@@ -26,17 +26,22 @@
             Code for this faster method is mine :).
   Ver 1.5 - Changed DoJetiSend in JetiExProtocol (changed filename to include2) from 150ms to 80ms wait
   Ver 1.6 - Added in support for ATMega32U chip (ie Pro Micro board)
+  Ver 1.7 - Added ability to change between 5hz and 10hz. It also changed the GNSS setting for 10hz as only GPS sats are supported at this rate.
 */
 
 #include "JetiExSerial.h"
 #include "JetiExProtocol2.h" // The has an 80ms wait for sending rather than the stock 150. This lets this do atleast 10hz now.
+#include <EEPROM.h>
 
 #if defined(__AVR_ATmega32U4__)
+  #define GPSport_h
   #include <AltSoftSerial.h>
   #define SS_TYPE AltSoftSerial
   #define RX_PIN -1  // doesn't matter because it only works...
   #define TX_PIN -1  //    ...on two specific pins
   SS_TYPE gpsPort( RX_PIN, TX_PIN );
+  #define GPS_PORT_NAME "AltSoftSerial"
+  #define DEBUG_PORT Serial
 #else
   #include <GPSport.h>
 #endif
@@ -49,10 +54,12 @@ static gps_fix  fix_data;
 unsigned long distToHome = 0;
 float home_lat;
 float home_lon;
+int last_good_alt = 0;
 boolean homeSet = false;
 boolean timerStarted = false;
 unsigned long timeOfFix;
 
+int hz = 5;
 
 uint8_t LastSentenceInInterval = 0xFF; // storage for the run-time selection
 
@@ -83,6 +90,20 @@ const unsigned char ubxDisableVTG[] PROGMEM =
   { 0x06,0x01,0x08,0x00,0xF0,0x05,0x00,0x00,0x00,0x00,0x00,0x01 };
 const unsigned char ubxDisableZDA[] PROGMEM =
   { 0x06,0x01,0x08,0x00,0xF0,0x08,0x00,0x00,0x00,0x00,0x00,0x01 };
+
+const unsigned char ubxCfgGNSSFast[] PROGMEM =
+  { 0x06,0x3E,0x2C,0x00,0x00,0x20,0x20,0x05,0x00,0x08,0x10,
+    0x00,0x01,0x00,0x01,0x01,0x01,0x01,0x03,0x00,0x00,0x00,
+    0x01,0x01,0x03,0x08,0x10,0x00,0x00,0x00,0x01,0x01,0x05,
+    0x00,0x03,0x00,0x00,0x00,0x01,0x01,0x06,0x08,0x0E,0x00,
+    0x00,0x00,0x01,0x01};
+
+const unsigned char ubxCfgGNSSBetter[] PROGMEM =
+  { 0x06,0x3E,0x2C,0x00,0x00,0x20,0x20,0x05,0x00,0x08,0x10,
+    0x00,0x01,0x00,0x01,0x01,0x01,0x01,0x03,0x00,0x01,0x00,
+    0x01,0x01,0x03,0x08,0x10,0x00,0x00,0x00,0x01,0x01,0x05,
+    0x00,0x03,0x00,0x01,0x00,0x01,0x01,0x06,0x08,0x0E,0x00,
+    0x01,0x00,0x01,0x01};
 
 const unsigned char ubxSetdm7[] PROGMEM = 
   { 0x06, 0x24, 0x24, 0x00, 0xFF, 0xFF, 0x07,
@@ -182,6 +203,10 @@ void setup()
 {
   gpsPort.begin( 9600 );
 
+  hz = EEPROM.read(0);
+  if (hz == 255) {
+    hz = 5;
+  }
   
   sendUBX( ubxDisableGLL, sizeof(ubxDisableGLL) );
   delay( COMMAND_DELAY );
@@ -195,9 +220,20 @@ void setup()
   delay( COMMAND_DELAY );
   sendUBX( ubxSetdm7, sizeof(ubxSetdm7) );
   delay( COMMAND_DELAY ); 
-  //sendUBX( ubxRate5Hz, sizeof(ubxRate5Hz) );
-  sendUBX( ubxRate10Hz, sizeof(ubxRate10Hz) );
-  delay( COMMAND_DELAY ); 
+  
+  if (hz == 5) {
+      sendUBX( ubxCfgGNSSBetter, sizeof(ubxCfgGNSSBetter) );
+      delay( COMMAND_DELAY ); 
+      sendUBX( ubxRate5Hz, sizeof(ubxRate5Hz) );
+      delay( COMMAND_DELAY );  
+  }
+  else {
+      sendUBX( ubxCfgGNSSFast, sizeof(ubxCfgGNSSFast) );
+      delay( COMMAND_DELAY ); 
+      sendUBX( ubxRate10Hz, sizeof(ubxRate10Hz) );  
+      delay( COMMAND_DELAY );  
+  }
+  
   LastSentenceInInterval = NMEAGPS::NMEA_GGA;
   
   jetiEx.SetDeviceId( 0x76, 0x32 );
@@ -208,6 +244,7 @@ void setup()
 
 void loop()
 {
+  int temp_alt = 0;
   
   if (nmgps.available( gpsPort )){
       fix_data = nmgps.read();
@@ -218,7 +255,7 @@ void loop()
             timeOfFix = millis();
           }
           else {
-            if ((millis() - timeOfFix) > 3000) { //allow for a few seconds for fixes to settle
+            if ((millis() - timeOfFix) > 5000) { //allow for a few seconds for fixes to settle
               fix = true;
               altirel = fix_data.altitude();
             }
@@ -247,11 +284,14 @@ void loop()
         
         jetiEx.SetSensorValueGPS( ID_GPSLAT, false, glat );
         jetiEx.SetSensorValueGPS( ID_GPSLON, true, glng );
-        jetiEx.SetSensorValue( ID_ALTM, (fix_data.altitude() - altirel));
+        //getting some bad altitude values that give large negative numbers.. lets clear them out and use last known good value.
+        temp_alt = fix_data.altitude() - altirel;
+        if (temp_alt > -50) {  //if we have good alt we are ok
+            last_good_alt = temp_alt; 
+        }
+        jetiEx.SetSensorValue( ID_ALTM, (last_good_alt));
         jetiEx.SetSensorValue( ID_DIST, distToHome);
         jetiEx.SetSensorValue( ID_GPSSPEEDKM, fix_data.speed_kph() );
-
-        
     
       } else { // If Fix end
         glat = 0;
@@ -269,9 +309,86 @@ void loop()
   if (nmgps.overrun()) {
     nmgps.overrun( false );
   }
-
+  HandleMenu(); 
   jetiEx.DoJetiSend();
   
 }
 
+
+void HandleMenu()
+{
+  static int  _nMenu = 0;
+  static bool _bSetDisplay = true;
+  uint8_t c = jetiEx.GetJetiboxKey();
+
+  // 224 0xe0 : // RIGHT
+  // 112 0x70 : // LEFT
+  // 208 0xd0 : // UP
+  // 176 0xb0 : // DOWN
+  // 144 0x90 : // UP+DOWN
+  //  96 0x60 : // LEFT+RIGHT
+
+  // Right
+  if ( c == 0xe0 && _nMenu < 2 )
+  {
+    _nMenu++;
+    _bSetDisplay = true;
+  }
+
+  // Left
+  if ( c == 0x70 &&  _nMenu > 0 )
+  {
+    _nMenu--;
+    _bSetDisplay = true;
+  }
+
+  // DN
+  if ( c == 0xb0 )
+  {
+    if ( _nMenu == 1 ) {
+      hz = 5;
+      EEPROM.write(0, hz);
+      _nMenu = 3;
+      _bSetDisplay = true;
+    }
+    if ( _nMenu == 2 ) {
+      hz = 10;
+      EEPROM.write(0, hz);
+      _nMenu = 3;
+      _bSetDisplay = true;
+    }
+  }
+
+  if ( !_bSetDisplay )
+    return;
+
+  switch ( _nMenu )
+  {
+    case 0:
+      jetiEx.SetJetiboxText( JetiExProtocol::LINE1, "  MHSFA Speed" );
+      jetiEx.SetJetiboxText( JetiExProtocol::LINE2, "   GPS Sensor" );
+      _bSetDisplay = false;
+      break;
+    case 1:
+      jetiEx.SetJetiboxText( JetiExProtocol::LINE1, "  5hz" );
+      jetiEx.SetJetiboxText( JetiExProtocol::LINE2, "  Store: DOWN" );
+      _bSetDisplay = false;
+      break;
+    case 2:
+      jetiEx.SetJetiboxText( JetiExProtocol::LINE1, "  10hz" );
+      jetiEx.SetJetiboxText( JetiExProtocol::LINE2, "  Store: DOWN" );
+      _bSetDisplay = false;
+      break;
+    case 3:
+      jetiEx.SetJetiboxText( JetiExProtocol::LINE1, "Settings stored!" );
+      jetiEx.SetJetiboxText( JetiExProtocol::LINE2, "    Reboot" );
+      _bSetDisplay = false;
+      break;
+      if (_nMenu == 3) {
+        delay(1500);
+        _nMenu = 0;
+        _bSetDisplay = true;
+      }
+  }
+}
 

@@ -18,6 +18,9 @@ http://www.ebay.co.uk/itm/Arduino-3-3v-Pro-mini-compatible-boards-Multipacks-NEW
 and the best place to find how to put them together and the place I based this work off is:
 https://www.rc-thoughts.com/jeti-gps-sensor/
 
+To use the ATMega32U board you need to add some extra boards to the Arduino IDE (from arduino.cc). In the preferences window in the "Additional Board Manager URL's" add: https://raw.githubusercontent.com/sparkfun/Arduino_Boards/master/IDE_Board_Manager/package_sparkfun_index.json
+Then in the board select "SpearkFun Pro Micro" and the processor select "ATMega32U4 (5V,16mhz)"
+
 ![alt text](https://github.com/AlCormack/SpeedGPS/blob/master/images/GPSModule.jpg "SpeedGPS on Gaui X3L")
 
 I have added an ExBus folder to this project. This is very much work in progress. On a heli with 3 EX sensors, I was not getting anything more than 5hz on the GPS. So I thought I would try over ExBus. Problem appears to be that ExBus seems to make the bandwidth for the other sensors worse, and I am not really seeing much improvement on the ExBus. Tom, from j-log fame, has a good explanation here: http://j-log.eu/s32/s32-en/telemetry-jeti-exbus/ I am going to keep playing but I'm not sure that ExBus is going to be the silver bullet here!

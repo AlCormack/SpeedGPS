@@ -19,7 +19,7 @@ and the best place to find how to put them together and the place I based this w
 https://www.rc-thoughts.com/jeti-gps-sensor/
 
 To use the ATMega32U board you need to add some extra boards to the Arduino IDE (from arduino.cc). In the preferences window in the "Additional Board Manager URL's" add: https://raw.githubusercontent.com/sparkfun/Arduino_Boards/master/IDE_Board_Manager/package_sparkfun_index.json
-Then in the board select "SpearkFun Pro Micro" and the processor select "ATMega32U4 (5V,16mhz)"
+Then in the board select "SparkFun Pro Micro" and the processor select "ATMega32U4 (5V,16mhz)"
 
 ![alt text](https://github.com/AlCormack/SpeedGPS/blob/master/images/GPSModule.jpg "SpeedGPS on Gaui X3L")
 

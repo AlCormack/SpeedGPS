@@ -8,6 +8,8 @@ GPS Module for Jeti that has a high navigation rate of up to 10hz (based on work
 * Ver 1.4: Added a faster way to calc distance between 2 points as we are only doing this over a few hunded metres. This will allow 9-10hz of gps of Jeti telemitry if no others sensors using the bus. For the maths folks it is now using Equirectangular approximation and not the haversine formula.
 * Ver 1.5 - Changed DoJetiSend in JetiExProtocol (changed filename to include2) from 150ms to 80ms wait
 * Ver 1.6 - Added in support for ATMega32U chip (ie Pro Micro board)
+* Ver 1.7 - Added ability to change between 5hz and 10hz. It also changed the GNSS setting for 10hz as only GPS sats are supported at this rate.  
+
 
 The GPS Module I got here:
 https://www.ebay.co.uk/itm/3-5V-UBlox-NEO-M8N-GPS-Module-For-Pixhawk-Flight-Controller-APM-2-5-W-Antenna/20208032531
@@ -18,8 +20,10 @@ http://www.ebay.co.uk/itm/Arduino-3-3v-Pro-mini-compatible-boards-Multipacks-NEW
 and the best place to find how to put them together and the place I based this work off is:
 https://www.rc-thoughts.com/jeti-gps-sensor/
 
-To use the ATMega32U board you need to add some extra boards to the Arduino IDE (from arduino.cc). In the preferences window in the "Additional Board Manager URL's" add: https://raw.githubusercontent.com/sparkfun/Arduino_Boards/master/IDE_Board_Manager/package_sparkfun_index.json
+To use the ATMega32U board (I like this board as it is small and has built in usb) you need to add some extra boards to the Arduino IDE (from arduino.cc). In the preferences window in the "Additional Board Manager URL's" add: https://raw.githubusercontent.com/sparkfun/Arduino_Boards/master/IDE_Board_Manager/package_sparkfun_index.json
 Then in the board select "SparkFun Pro Micro" and the processor select "ATMega32U4 (5V,16mhz)"
+
+Make sure you have the contents of the SpeedGPSLibs.zip in your Arduino Library folder.
 
 ![alt text](https://github.com/AlCormack/SpeedGPS/blob/master/images/GPSModule.jpg "SpeedGPS on Gaui X3L")
 

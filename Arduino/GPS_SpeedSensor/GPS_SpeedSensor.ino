@@ -27,7 +27,11 @@
   Ver 1.5 - Changed DoJetiSend in JetiExProtocol (changed filename to include2) from 150ms to 80ms wait
   Ver 1.6 - Added in support for ATMega32U chip (ie Pro Micro board)
   Ver 1.7 - Added ability to change between 5hz and 10hz. It also changed the GNSS setting for 10hz as only GPS sats are supported at this rate.
+  Ver 1.8 - Added pdop as error value to be reported back to tx. Note this needs an updated GPSfix_cfg.h to enable DOP fields. The value sent back is * x1000 eg 1209 is 1.209
+  Ver 1.9 - Added version display while we are waiting for GPS to settle after getting a fix (5 seconds) - 18 is 1.8. Added in a reset in the jeti box to reset dist and alt to 0.
 */
+#define GPS_SPEED_VER 19
+
 
 #include "JetiExSerial.h"
 #include "JetiExProtocol2.h" // The has an 80ms wait for sending rather than the stock 150. This lets this do atleast 10hz now.
@@ -140,7 +144,7 @@ float glat;
 float glng;
 int altirel;
 int altiabs;
-
+int gerror = 9999;
 
 enum
 {
@@ -150,6 +154,7 @@ enum
   ID_GPSSPEEDMI   = 3,
   ID_ALTM         = 4,
   ID_DIST         = 5,
+  ID_ERROR        = 6,
 };
 
 double distanceBetween(double lat1, double long1, double lat2, double long2)
@@ -187,11 +192,12 @@ double distanceBetweenFast(double lat1, double long1, double lat2, double long2)
 JETISENSOR_CONST sensorsSPEED[] PROGMEM =
 {
   // id             name          unit          data type           precision
-  { ID_GPSLAT,      "Latitude",   "\xB0",          JetiSensor::TYPE_GPS, 0 },
-  { ID_GPSLON,      "Longitude",  "\xB0",          JetiSensor::TYPE_GPS, 0 },
+  { ID_GPSLAT,      "Latitude",   "\xB0",       JetiSensor::TYPE_GPS, 0 },
+  { ID_GPSLON,      "Longitude",  "\xB0",       JetiSensor::TYPE_GPS, 0 },
   { ID_GPSSPEEDKM,  "Speed",      "km/h",       JetiSensor::TYPE_14b, 0 },
   { ID_ALTM,        "Altitude",   "m",          JetiSensor::TYPE_14b, 0 },
   { ID_DIST,        "Distance",   "m",          JetiSensor::TYPE_14b, 0 },
+  { ID_ERROR,       "Error",      "",           JetiSensor::TYPE_14b, 0 },
   { 0 }
 };
 
@@ -223,13 +229,13 @@ void setup()
   
   if (hz == 5) {
       sendUBX( ubxCfgGNSSBetter, sizeof(ubxCfgGNSSBetter) );
-      delay( COMMAND_DELAY ); 
+      delay( COMMAND_DELAY *10 ); 
       sendUBX( ubxRate5Hz, sizeof(ubxRate5Hz) );
       delay( COMMAND_DELAY );  
   }
   else {
       sendUBX( ubxCfgGNSSFast, sizeof(ubxCfgGNSSFast) );
-      delay( COMMAND_DELAY ); 
+      delay( COMMAND_DELAY * 10 ); 
       sendUBX( ubxRate10Hz, sizeof(ubxRate10Hz) );  
       delay( COMMAND_DELAY );  
   }
@@ -281,7 +287,13 @@ void loop()
             home_lat,
             home_lon);
 
-        
+
+        //gerror = (fix_data.lon_err() + fix_data.lat_err()) / 2.0;
+        if (fix_data.pdop > 0) {
+          gerror = fix_data.pdop;
+        }
+        jetiEx.SetSensorValue( ID_ERROR, gerror );
+        jetiEx.SetSensorValueGPS( ID_GPSLON, true, glng );
         jetiEx.SetSensorValueGPS( ID_GPSLAT, false, glat );
         jetiEx.SetSensorValueGPS( ID_GPSLON, true, glng );
         //getting some bad altitude values that give large negative numbers.. lets clear them out and use last known good value.
@@ -302,6 +314,13 @@ void loop()
         jetiEx.SetSensorValue( ID_ALTM, 0 );
         jetiEx.SetSensorValue( ID_DIST, 0);
         jetiEx.SetSensorValue( ID_GPSSPEEDKM, 0 );
+        if (timerStarted == false) {
+          jetiEx.SetSensorValue( ID_ERROR, hz); //put out hz while we are waiting for fix
+        }
+        else {
+          jetiEx.SetSensorValue( ID_ERROR, GPS_SPEED_VER); //put version while we are waiting for fix to settle
+        }
+        
       }
   }
 
@@ -329,7 +348,7 @@ void HandleMenu()
   //  96 0x60 : // LEFT+RIGHT
 
   // Right
-  if ( c == 0xe0 && _nMenu < 2 )
+  if ( c == 0xe0 && _nMenu < 3 )
   {
     _nMenu++;
     _bSetDisplay = true;
@@ -348,13 +367,20 @@ void HandleMenu()
     if ( _nMenu == 1 ) {
       hz = 5;
       EEPROM.write(0, hz);
-      _nMenu = 3;
+      _nMenu = 4;
       _bSetDisplay = true;
     }
     if ( _nMenu == 2 ) {
       hz = 10;
       EEPROM.write(0, hz);
-      _nMenu = 3;
+      _nMenu = 4;
+      _bSetDisplay = true;
+    }
+    if ( _nMenu == 3 ) {
+      fix = false;
+      homeSet = false;
+      timerStarted = false;
+      _nMenu = 4;
       _bSetDisplay = true;
     }
   }
@@ -380,11 +406,16 @@ void HandleMenu()
       _bSetDisplay = false;
       break;
     case 3:
-      jetiEx.SetJetiboxText( JetiExProtocol::LINE1, "Settings stored!" );
-      jetiEx.SetJetiboxText( JetiExProtocol::LINE2, "    Reboot" );
+      jetiEx.SetJetiboxText( JetiExProtocol::LINE1, "  Reset" );
+      jetiEx.SetJetiboxText( JetiExProtocol::LINE2, "  DOWN" );
       _bSetDisplay = false;
       break;
-      if (_nMenu == 3) {
+    case 4:
+      jetiEx.SetJetiboxText( JetiExProtocol::LINE1, "Settings stored!" );
+      jetiEx.SetJetiboxText( JetiExProtocol::LINE2, " " );
+      _bSetDisplay = false;
+      break;
+      if (_nMenu == 4) {
         delay(1500);
         _nMenu = 0;
         _bSetDisplay = true;

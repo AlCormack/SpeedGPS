@@ -29,7 +29,8 @@
 #define RX_PIN -1  // doesn't matter because it only works...
 #define TX_PIN -1  //    ...on two specific pins
 SS_TYPE gpsPort( RX_PIN, TX_PIN );
-
+#define GPS_PORT_NAME "AltSoftSerial"
+#define DEBUG_PORT Serial
 #include <NMEAGPS.h>
 #include <Streamers.h>
 

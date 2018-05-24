@@ -29,8 +29,9 @@
   Ver 1.7 - Added ability to change between 5hz and 10hz. It also changed the GNSS setting for 10hz as only GPS sats are supported at this rate.
   Ver 1.8 - Added pdop as error value to be reported back to tx. Note this needs an updated GPSfix_cfg.h to enable DOP fields. The value sent back is * x1000 eg 1209 is 1.209
   Ver 1.9 - Added version display while we are waiting for GPS to settle after getting a fix (5 seconds) - 18 is 1.8. Added in a reset in the jeti box to reset dist and alt to 0.
+  Ver 1.10 - Corrected DOP display
 */
-#define GPS_SPEED_VER 19
+#define GPS_SPEED_VER 110
 
 
 #include "JetiExSerial.h"
@@ -144,7 +145,7 @@ float glat;
 float glng;
 int altirel;
 int altiabs;
-int gerror = 9999;
+long gerror = 9999;
 
 enum
 {
@@ -197,7 +198,7 @@ JETISENSOR_CONST sensorsSPEED[] PROGMEM =
   { ID_GPSSPEEDKM,  "Speed",      "km/h",       JetiSensor::TYPE_14b, 0 },
   { ID_ALTM,        "Altitude",   "m",          JetiSensor::TYPE_14b, 0 },
   { ID_DIST,        "Distance",   "m",          JetiSensor::TYPE_14b, 0 },
-  { ID_ERROR,       "Error",      "",           JetiSensor::TYPE_14b, 0 },
+  { ID_ERROR,       "Error",      "",           JetiSensor::TYPE_30b, 0 },
   { 0 }
 };
 
@@ -289,8 +290,8 @@ void loop()
 
 
         //gerror = (fix_data.lon_err() + fix_data.lat_err()) / 2.0;
-        if (fix_data.pdop > 0) {
-          gerror = fix_data.pdop;
+        if (fix_data.hdop > 0) {
+          gerror = fix_data.hdop;
         }
         jetiEx.SetSensorValue( ID_ERROR, gerror );
         jetiEx.SetSensorValueGPS( ID_GPSLON, true, glng );
